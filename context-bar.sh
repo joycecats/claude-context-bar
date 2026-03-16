@@ -208,15 +208,6 @@ else
     ctx="${C_GRAY}~${free_pct}% free of ${display_size} ${bar}"
 fi
 
-# Session name title bar (only shown when a name has been set via /rename)
-if [[ -n "$session_name" ]]; then
-    C_TITLE_BG='\033[48;5;236m'   # dark gray background
-    C_TITLE_FG='\033[38;5;229m'   # bright warm white foreground
-    C_TITLE_BOLD='\033[1m'
-    C_TITLE_RESET='\033[0m'
-    printf '%b\n' "${C_TITLE_BG}${C_TITLE_BOLD}${C_TITLE_FG}  ${session_name}  ${C_TITLE_RESET}"
-fi
-
 # Build output: Context | Model | Dir
 output="${ctx}${C_GRAY} | ${C_ACCENT}${model}${C_GRAY} | 📁${dir}"
 output+="${C_RESET}"
