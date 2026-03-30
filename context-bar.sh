@@ -208,11 +208,65 @@ else
     ctx="${C_GRAY}~${free_pct}% free of ${display_size} ${bar}"
 fi
 
+# Parse rate limits (5-hour and 7-day windows)
+r5_pct=$(echo "$input" | jq -r '.rate_limits.five_hour.used_percentage // empty')
+r5_reset=$(echo "$input" | jq -r '.rate_limits.five_hour.resets_at // empty')
+r7_pct=$(echo "$input" | jq -r '.rate_limits.seven_day.used_percentage // empty')
+
+rate_info=""
+if [[ -n "$r5_pct" ]]; then
+    parts=()
+
+    # Calculate time until 5h reset
+    r5_remaining=""
+    if [[ -n "$r5_reset" && "$r5_reset" != "null" ]]; then
+        now=$(date +%s)
+        diff=$((r5_reset - now))
+        if [[ $diff -gt 0 ]]; then
+            hours=$((diff / 3600))
+            mins=$(((diff % 3600) / 60))
+            if [[ $hours -gt 0 ]]; then
+                r5_remaining=" resets ${hours}h${mins}m"
+            else
+                r5_remaining=" resets ${mins}m"
+            fi
+        fi
+    fi
+
+    # Color code: green < 50%, orange 50-80%, red > 80%
+    if [[ "$r5_pct" -ge 80 ]]; then
+        parts+=("\033[38;5;167m5h: ${r5_pct}%${r5_remaining}${C_GRAY}")
+    elif [[ "$r5_pct" -ge 50 ]]; then
+        parts+=("${C_ACCENT}5h: ${r5_pct}%${r5_remaining}${C_GRAY}")
+    else
+        parts+=("5h: ${r5_pct}%${r5_remaining}")
+    fi
+
+    if [[ -n "$r7_pct" ]]; then
+        if [[ "$r7_pct" -ge 80 ]]; then
+            parts+=("\033[38;5;167m7d: ${r7_pct}%${C_GRAY}")
+        elif [[ "$r7_pct" -ge 50 ]]; then
+            parts+=("${C_ACCENT}7d: ${r7_pct}%${C_GRAY}")
+        else
+            parts+=("7d: ${r7_pct}%")
+        fi
+    fi
+
+    if [[ ${#parts[@]} -gt 0 ]]; then
+        rate_info=$(IFS=' | '; echo "${parts[*]}")
+    fi
+fi
+
 # Build output: Context | Model | Dir
 output="${ctx}${C_GRAY} | ${C_ACCENT}${model}${C_GRAY} | 📁${dir}"
 output+="${C_RESET}"
 
 printf '%b\n' "$output"
+
+# Rate limits on second line (if available)
+if [[ -n "$rate_info" ]]; then
+    printf '%b\n' "${C_GRAY}⚡${rate_info}${C_RESET}"
+fi
 
 # Git info on its own line (branch shown natively by Claude Code, but details are ours)
 if [[ -n "$branch" ]]; then
